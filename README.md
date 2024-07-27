@@ -88,11 +88,62 @@ allprojects {
                     });
         });
 
+        profile_update_btn.setOnClickListener(v -> {
+
+            updatebtnClick();
+
+        });
 
 ```
+
+
+
 ## Step: 6
 
-*Make a class
+Make Void For Update button
+
+
+
+   ```bash
+   
+     void updatebtnClick(){
+
+        String newUserName = profile_username.getText().toString();
+        if(newUserName.isEmpty() || newUserName.length()<3){
+            profile_username.setError("Username Shoud Be at Least 3 Character");
+            return;
+        }
+        currentUserModel.setUsername(newUserName);
+        setInProgess(true);
+
+        if (selectedImageUri!=null){
+            FirebaseUtil.getCurrentProfilePicStorageRef().putFile(selectedImageUri)
+                    .addOnCompleteListener(task -> {
+                        updateToFirebase();
+                    });
+        }else {
+            updateToFirebase();
+        }
+
+        updateToFirebase();
+
+
+    }
+
+
+   ```
+
+
+
+
+
+
+
+## Step: 7
+
+*Make a  class
+
+
 
    ```bash
     public class Android_Util {
@@ -110,4 +161,23 @@ allprojects {
 
    ```
 
+## Step: 8
 
+*Make a  class
+
+
+
+   ```bash
+    public class FirebaseUtil {
+
+    public static StorageReference getCurrentProfilePicStorageRef(){
+        return FirebaseStorage.getInstance().getReference().child("profilepic")
+                .child(FirebaseUtil.currentUserId());
+    }
+
+
+ }
+ 
+
+
+   ```
