@@ -18,6 +18,13 @@ Add gradle
 
    ```bash
 
+
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://jitpack.io" }
+    }
+
     //Image Piker
     implementation 'com.github.dhaval2404:imagepicker:2.1'
 
