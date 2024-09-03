@@ -19,70 +19,35 @@ Add gradle
    ```bash
 
 
-    repositories {
-        google()
-        mavenCentral()
-        maven { url "https://jitpack.io" }
-    }
 
-
-    ///Kamrumi
-    implementation 'com.karumi:dexter:6.2.3'
-
-    //Glide Library
-    implementation 'com.github.bumptech.glide:glide:4.16.0'
-
-
-   ```
-
-   ## Step:4
-open Manifest
-
-   ```bash
-
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-
-    <application
-    
-
-   ```
-
-   ## Step : 5
-   I try it fragment.
-
- ```bash
-    package com.example.watchandearn;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.AppCompatButton;
+package com.example.admin.Activity;
 
 import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
-import com.example.watchandearn.model.ProfileModel;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatButton;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.admin.Adapter.Bg_photo_Adapter;
+import com.example.admin.R;
+import com.example.admin.model.PhotoModel;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -98,127 +63,146 @@ import com.karumi.dexter.PermissionToken;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
-public class ProfileActivity extends AppCompatActivity {
-
-    private CircleImageView circleImageView;
-    private ImageView img_edit_profile;
-    private TextView tv_name,tv_email,tv_share,tv_history,tv_logout;
-    private AppCompatButton updateBtn;
-    private  DatabaseReference reference;
-    private FirebaseUser user;
-    private  FirebaseAuth auth;
+public class Bg_PhotoActivity extends AppCompatActivity {
 
     ProgressDialog dialog;
-    private static final int IMAGE_PIKER = 1;
+   RecyclerView recylerView;
+   FloatingActionButton addPhoto;
+
     private Uri photoUri;
     private String imageUrl;
+    String currentDateAndTime;
+    private DatabaseReference catRef;
+    private static final int IMAGE_PIKER = 1;
+
+
+    ArrayList<PhotoModel>list;
+    Bg_photo_Adapter adapter;
+
+    CircleImageView upload_photo;
 
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_profile);
+        setContentView(R.layout.activity_bg_photo);
 
         ///Progress
         dialog = new ProgressDialog(this);
         dialog.setTitle(R.string.app_name);
 //        dialog.setMessage("Please Wait....");
         dialog.setCancelable(false);
-
-        ////Identity
-        circleImageView = findViewById(R.id.circleImageView);
-        img_edit_profile = findViewById(R.id.img_edit_profile);
-        tv_name = findViewById(R.id.tv_name);
-        tv_email = findViewById(R.id.tv_email);
-        tv_share = findViewById(R.id.tv_share);
-        tv_history = findViewById(R.id.tv_history);
-        tv_logout = findViewById(R.id.tv_logout);
-        updateBtn = findViewById(R.id.updateBtn);
-
-        ////Fireebase
-
-        auth = FirebaseAuth.getInstance();
-        user = auth.getCurrentUser();
-        reference = FirebaseDatabase.getInstance().getReference().child("users");
-
-        ///Method Cell
-        loadDataFromDatabase();
+        catRef = FirebaseDatabase.getInstance().getReference();
 
 
 
+        addPhoto = findViewById(R.id.addPhoto);
+        recylerView = findViewById(R.id.recylerView);
 
-        updateBtn.setOnClickListener(new View.OnClickListener() {
+        GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(),2);
+        recylerView.setLayoutManager(gridLayoutManager);
+
+
+
+        list = new ArrayList<>();
+        adapter = new Bg_photo_Adapter(list,getApplicationContext());
+        recylerView.setAdapter(adapter);
+        loadData();
+
+        addPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                uploadImage();
+            public void onClick(View view) {
+                ShowDialogBox();
             }
         });
 
-        img_edit_profile.setOnClickListener(v -> {
-            Dexter.withContext(ProfileActivity.this)
-                    .withPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE
-                            ,Manifest.permission.READ_EXTERNAL_STORAGE)
-                    .withListener(new MultiplePermissionsListener() {
-                        @Override
-                        public void onPermissionsChecked(MultiplePermissionsReport multiplePermissionsReport) {
-
-                            if (multiplePermissionsReport.areAllPermissionsGranted()) {
-
-                                Intent intent = new Intent(Intent.ACTION_PICK);
-                                intent.setType("image/*");
-                                startActivityForResult(intent,IMAGE_PIKER);
-                            }else {
-                                Toast.makeText(ProfileActivity.this, "Please Allow Permission", Toast.LENGTH_SHORT).show();
-                            }
-                        }
+    }///End On create ================================
 
 
-                        @Override
-                        public void onPermissionRationaleShouldBeShown(List<PermissionRequest> list, PermissionToken permissionToken) {
 
-                        }
-                    }).check();
+
+    private void ShowDialogBox (){
+        final AlertDialog.Builder alert = new AlertDialog.Builder(this);
+        View view = getLayoutInflater().inflate(R.layout.add_photo_box, null);
+        upload_photo = view.findViewById(R.id.upload_photo);
+
+        AppCompatButton cancel = view.findViewById(R.id.cancel);
+        AppCompatButton addphotoBtn = view.findViewById(R.id.addphotoBtn);
+
+
+        //*******Clicklistener
+
+        upload_photo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                imagInfo();
+            }
         });
 
 
 
+        //*******Clicklistener
+
+        alert.setView(view);
+
+        final AlertDialog alertDialog = alert.create();
+        alertDialog.setCancelable(false);
+        alertDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        cancel.setOnClickListener(view1 -> {
+            alertDialog.dismiss();
+        });
+
+        addphotoBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                uploadImage();
+
+            }
+        });
+        alertDialog.show();
     }
 
-    ////Method make
-    public   void  loadDataFromDatabase(){
 
-        reference.child(user.getUid())
-                .addValueEventListener(new ValueEventListener() {
+
+
+
+    private void imagInfo(){
+
+
+        Dexter.withContext(getApplicationContext())
+                .withPermissions(android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                        , Manifest.permission.READ_EXTERNAL_STORAGE)
+                .withListener(new MultiplePermissionsListener() {
                     @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    public void onPermissionsChecked(MultiplePermissionsReport multiplePermissionsReport) {
 
-                        ProfileModel model = snapshot.getValue(ProfileModel.class);
+                        if (multiplePermissionsReport.areAllPermissionsGranted()) {
 
-                        tv_name.setText(model.getName());
-                        tv_email.setText(model.getEmail());
-                        Glide.with(getApplicationContext())
-                                .load(model.getImage())
-                                .placeholder(R.drawable.avatar)
-                                .timeout(6000)
-                                .into(circleImageView);
-
-
+                            Intent intent = new Intent(Intent.ACTION_PICK);
+                            intent.setType("image/*");
+                            startActivityForResult(intent,IMAGE_PIKER);
+                        }else {
+                            Toast.makeText(getApplicationContext(), "Please Allow Permission", Toast.LENGTH_SHORT).show();
+                        }
                     }
 
+
                     @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        Toast.makeText(ProfileActivity.this, "Error: "+error.getMessage(), Toast.LENGTH_SHORT).show();
-                        finish();
+                    public void onPermissionRationaleShouldBeShown(List<PermissionRequest> list, PermissionToken permissionToken) {
+
                     }
-                });
-
-
+                }).check();
     }
 
     @Override
@@ -230,8 +214,8 @@ public class ProfileActivity extends AppCompatActivity {
             if (data != null){
 
                 photoUri = data.getData();
-                circleImageView.setImageURI(photoUri);
-                updateBtn.setVisibility(View.VISIBLE);
+                upload_photo.setImageURI(photoUri);
+
             }
 
         }
@@ -240,15 +224,16 @@ public class ProfileActivity extends AppCompatActivity {
 
 
     private  void  uploadImage(){
-
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        currentDateAndTime = sdf.format(new Date());
         if (photoUri == null){
             return;
         }
-        String fileName = user.getUid()+".jpg";
+        String fileName = currentDateAndTime+".jpg";
 
 
         FirebaseStorage storage = FirebaseStorage.getInstance();
-        final StorageReference storageReference = storage.getReference().child("Image/"+fileName);
+        final StorageReference storageReference = storage.getReference().child("Imageback/"+fileName);
 
         dialog.show();
 
@@ -273,7 +258,7 @@ public class ProfileActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(@NonNull Exception e) {
                         dialog.dismiss();
-                        Toast.makeText(ProfileActivity.this, "Error: "+e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getApplicationContext(), "Error: "+e.getMessage(), Toast.LENGTH_SHORT).show();
 
                     }
                 }).addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
@@ -297,17 +282,20 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void uploadImageUrlToDatabase() {
 
-        HashMap<String, Object> map =new HashMap<>();
-        map.put("image",imageUrl);
+        HashMap<String, Object> hashMap =new HashMap<>();
+        hashMap.put("image",imageUrl);
 
-        reference.child(user.getUid())
-                .updateChildren(map)
+        String UNIQ = catRef.push().getKey();
+
+
+        catRef.child("Background_photo").child(UNIQ)
+                .updateChildren(hashMap)
                 .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
-                        updateBtn.setVisibility(View.GONE);
+
                         dialog.dismiss();
-                        Toast.makeText(ProfileActivity.this, "Image Update Succesfully", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getApplicationContext(), "Image Update Succesfully", Toast.LENGTH_SHORT).show();
                     }
                 });
 
@@ -315,8 +303,38 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
 
+    private void loadData()
+    {
+        catRef.child("Background_photo").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                    for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                        PhotoModel model = dataSnapshot.getValue(PhotoModel.class);
+                        list.add(model);
+                        Toast.makeText(getApplicationContext(), "Success", Toast.LENGTH_SHORT).show();
+                    }
+                    adapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(getApplicationContext(), "Error"+error.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+
+
+    }
+
+
+
+
 
 }
+
+
+
 
 ```
 
